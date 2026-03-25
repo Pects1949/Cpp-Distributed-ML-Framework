@@ -165,4 +165,29 @@ Tensor Tensor::detach() const {
     return t;
 }
 
+// ---------------------------------------------------------------------------
+// In-place ops (optimizer use only — no graph nodes created)
+// ---------------------------------------------------------------------------
+
+void Tensor::add_inplace(const Tensor& other, float scale) {
+    assert(size_ == other.size_);
+    float* a = data_.get();
+    const float* b = other.data_.get();
+    for (int i = 0; i < size_; ++i) a[i] += scale * b[i];
+}
+
+void Tensor::scale_inplace(float s) {
+    float* a = data_.get();
+    for (int i = 0; i < size_; ++i) a[i] *= s;
+}
+
+void Tensor::copy_from(const Tensor& other) {
+    assert(size_ == other.size_);
+    std::copy(other.data_.get(), other.data_.get() + size_, data_.get());
+}
+
+void Tensor::fill(float v) {
+    std::fill(data_.get(), data_.get() + size_, v);
+}
+
 } // namespace cppdist
