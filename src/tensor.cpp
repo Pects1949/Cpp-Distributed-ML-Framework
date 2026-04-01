@@ -212,6 +212,40 @@ Tensor operator*(float s, const Tensor& t) { return t * s; }
 Tensor Tensor::operator/(float s) const { return (*this) * (1.f / s); }
 
 // ---------------------------------------------------------------------------
+// Linear algebra: matmul and transpose (forward-only)
+// ---------------------------------------------------------------------------
+
+Tensor Tensor::transpose() const {
+    if (ndim() != 2) throw std::invalid_argument("transpose only supported for 2D tensors");
+    int m = shape_[0], n = shape_[1];
+    bool rg = requires_grad_;
+    Tensor out = make_output({n, m}, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < m; ++i)
+        for (int j = 0; j < n; ++j)
+            b[j * m + i] = a[i * n + j];
+    return out;
+}
+
+Tensor Tensor::matmul(const Tensor& a, const Tensor& b) {
+    if (a.ndim() != 2 || b.ndim() != 2)
+        throw std::invalid_argument("matmul: only 2D tensors supported");
+    int m = a.shape_[0], k = a.shape_[1], n = b.shape_[1];
+    if (k != b.shape_[0]) throw std::invalid_argument("matmul: inner dimensions must match");
+    bool rg = a.requires_grad_ || b.requires_grad_;
+    Tensor out = make_output({m, n}, rg);
+    const float* A = a.data_.get(); const float* B = b.data_.get(); float* C = out.data_.get();
+    // Naive O(mnk) -- sufficient for the layer sizes used in training
+    for (int i = 0; i < m; ++i)
+        for (int j = 0; j < n; ++j) {
+            float s = 0.f;
+            for (int l = 0; l < k; ++l) s += A[i * k + l] * B[l * n + j];
+            C[i * n + j] = s;
+        }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
 // In-place ops (optimizer use only — no graph nodes created)
 // ---------------------------------------------------------------------------
 
