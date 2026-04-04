@@ -212,6 +212,68 @@ Tensor operator*(float s, const Tensor& t) { return t * s; }
 Tensor Tensor::operator/(float s) const { return (*this) * (1.f / s); }
 
 // ---------------------------------------------------------------------------
+// Shape manipulation: reshape, sum, mean (forward-only)
+// ---------------------------------------------------------------------------
+
+Tensor Tensor::reshape(std::vector<int> new_shape) const {
+    int new_n = compute_size(new_shape);
+    if (new_n != size_) throw std::invalid_argument("reshape: total size mismatch");
+    bool rg = requires_grad_;
+    Tensor out;
+    out.data_ = data_; out.grad_data_ = grad_data_;
+    out.shape_ = std::move(new_shape); out.size_ = size_; out.requires_grad_ = rg;
+    return out;
+}
+
+Tensor Tensor::sum(int dim, bool keepdim) const {
+    if (dim == -1) {
+        bool rg = requires_grad_;
+        Tensor out = make_output({1}, rg);
+        float total = 0.f;
+        const float* a = data_.get();
+        for (int i = 0; i < size_; ++i) total += a[i];
+        out.data_.get()[0] = total;
+        return out;
+    }
+    if (dim < 0 || dim >= ndim()) throw std::out_of_range("sum: dim out of range");
+    std::vector<int> out_shape;
+    for (int i = 0; i < ndim(); ++i) {
+        if (i == dim) { if (keepdim) out_shape.push_back(1); }
+        else out_shape.push_back(shape_[i]);
+    }
+    if (out_shape.empty()) out_shape = {1};
+    bool rg = requires_grad_;
+    Tensor out = make_output(out_shape, rg);
+    float* o = out.data_.get(); const float* a = data_.get();
+    if (ndim() == 2) {
+        int m = shape_[0], n = shape_[1];
+        if (dim == 0) {
+            for (int j = 0; j < n; ++j) {
+                float s = 0.f;
+                for (int i = 0; i < m; ++i) s += a[i * n + j];
+                o[j] = s;
+            }
+        } else {
+            for (int i = 0; i < m; ++i) {
+                float s = 0.f;
+                for (int j = 0; j < n; ++j) s += a[i * n + j];
+                o[i] = s;
+            }
+        }
+    } else if (ndim() == 1) {
+        float s = 0.f; for (int i = 0; i < size_; ++i) s += a[i]; o[0] = s;
+    } else {
+        throw std::runtime_error("sum: only 1D/2D supported");
+    }
+    return out;
+}
+
+Tensor Tensor::mean(int dim, bool keepdim) const {
+    if (dim == -1) return sum(-1, keepdim) * (1.f / static_cast<float>(size_));
+    return sum(dim, keepdim) * (1.f / static_cast<float>(shape_[dim]));
+}
+
+// ---------------------------------------------------------------------------
 // Linear algebra: matmul and transpose (forward-only)
 // ---------------------------------------------------------------------------
 
