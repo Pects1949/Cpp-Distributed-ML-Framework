@@ -45,4 +45,25 @@ private:
     void init_weights();
 };
 
+class ReLU : public Layer {
+public:
+    Tensor forward(const Tensor& input) override { return input.relu(); }
+    std::vector<Tensor*> parameters() override { return {}; }
+    std::string name() const override { return "ReLU"; }
+};
+
+class Sigmoid : public Layer {
+public:
+    Tensor forward(const Tensor& input) override { return input.sigmoid(); }
+    std::vector<Tensor*> parameters() override { return {}; }
+    std::string name() const override { return "Sigmoid"; }
+};
+
+class TanhActivation : public Layer {
+public:
+    Tensor forward(const Tensor& input) override { return input.tanh_act(); }
+    std::vector<Tensor*> parameters() override { return {}; }
+    std::string name() const override { return "Tanh"; }
+};
+
 } // namespace cppdist
