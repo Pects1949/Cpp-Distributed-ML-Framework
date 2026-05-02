@@ -38,4 +38,24 @@ private:
     void init();
 };
 
+// Adam: adaptive moment estimation.
+// m = beta1*m + (1-beta1)*g
+// v = beta2*v + (1-beta2)*g^2
+// param -= lr * (m/(1-beta1^t)) / (sqrt(v/(1-beta2^t)) + eps)
+class Adam : public Optimizer {
+public:
+    Adam(std::vector<Tensor*> params, float lr = 1e-3f,
+         float beta1 = 0.9f, float beta2 = 0.999f,
+         float eps = 1e-8f, float weight_decay = 0.f);
+
+    void step() override;
+
+private:
+    float beta1_, beta2_, eps_, weight_decay_;
+    int   step_count_{0};
+    std::vector<Tensor> m_, v_;
+    bool initialized_{false};
+    void init();
+};
+
 } // namespace cppdist
