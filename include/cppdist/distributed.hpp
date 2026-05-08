@@ -3,6 +3,10 @@
 #include <vector>
 #include <memory>
 
+#ifdef CPPDIST_USE_MPI
+#include <mpi.h>
+#endif
+
 namespace cppdist {
 
 class DistributedBackend {
@@ -35,6 +39,23 @@ public:
     void broadcast(Tensor&, int) override {}
     void barrier() override {}
 };
+
+#ifdef CPPDIST_USE_MPI
+class MPIBackend : public DistributedBackend {
+public:
+    void init(int* argc, char*** argv) override;
+    void finalize() override;
+    int  rank()       const override { return rank_; }
+    int  world_size() const override { return world_size_; }
+    void allreduce_gradients(std::vector<Tensor*>& params) override;
+    void broadcast(Tensor& tensor, int root = 0) override;
+    void barrier() override;
+
+private:
+    int rank_{0};
+    int world_size_{1};
+};
+#endif
 
 // Returns MPIBackend if compiled with CPPDIST_USE_MPI, otherwise NoOpBackend
 std::unique_ptr<DistributedBackend> make_backend(int* argc, char*** argv);
