@@ -50,7 +50,34 @@ public:
     void backward();                            // upstream = all-ones (scalar loss)
     void backward(const Tensor& upstream_grad); // explicit upstream gradient
 
-    // Clone / detach
+    // Arithmetic — autograd-tracked, return new Tensors
+    Tensor operator+(const Tensor& other) const;
+    Tensor operator-(const Tensor& other) const;
+    Tensor operator*(const Tensor& other) const;  // elementwise
+    Tensor operator*(float s) const;
+    Tensor operator/(float s) const;
+    friend Tensor operator*(float s, const Tensor& t);
+
+    // Shape operations
+    Tensor reshape(std::vector<int> new_shape) const;
+    Tensor transpose() const;  // 2D only: [m,n] -> [n,m]
+    Tensor sum(int dim, bool keepdim = false) const;  // dim=-1: sum all elements
+    Tensor mean(int dim = -1, bool keepdim = false) const;
+
+    // Activations (autograd-tracked)
+    Tensor relu() const;
+    Tensor sigmoid() const;
+    Tensor tanh_act() const;
+    Tensor exp_t() const;
+    Tensor log_t() const;
+    Tensor softmax(int dim = 1) const;
+
+    // Bias add: self [batch,n] + bias [n], broadcasts over dim 0
+    Tensor add_bias(const Tensor& bias) const;
+
+    // Matrix multiply: A[m,k] @ B[k,n] -> [m,n]
+    static Tensor matmul(const Tensor& a, const Tensor& b);
+
     Tensor clone()  const;  // deep copy, same requires_grad
     Tensor detach() const;  // deep copy, no grad tracking
 
