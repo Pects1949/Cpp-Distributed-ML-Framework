@@ -1,0 +1,5 @@
+build/
+build-mpi/
+*.o
+*.a
+.DS_Store
