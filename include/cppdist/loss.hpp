@@ -18,4 +18,13 @@ public:
     std::string name() const override { return "MSELoss"; }
 };
 
+// Cross-entropy with log-sum-exp trick.
+// logits: [batch, num_classes] (raw, before softmax)
+// targets: [batch] integer class indices
+class CrossEntropyLoss : public Loss {
+public:
+    Tensor forward(const Tensor& logits, const Tensor& targets) override;
+    std::string name() const override { return "CrossEntropyLoss"; }
+};
+
 } // namespace cppdist
