@@ -212,6 +212,80 @@ Tensor operator*(float s, const Tensor& t) { return t * s; }
 Tensor Tensor::operator/(float s) const { return (*this) * (1.f / s); }
 
 // ---------------------------------------------------------------------------
+// Activation ops and bias-broadcast add (forward-only)
+// ---------------------------------------------------------------------------
+
+Tensor Tensor::relu() const {
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < size_; ++i) b[i] = a[i] > 0.f ? a[i] : 0.f;
+    return out;
+}
+
+Tensor Tensor::sigmoid() const {
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < size_; ++i) b[i] = 1.f / (1.f + std::exp(-a[i]));
+    return out;
+}
+
+Tensor Tensor::tanh_act() const {
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < size_; ++i) b[i] = std::tanh(a[i]);
+    return out;
+}
+
+Tensor Tensor::exp_t() const {
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < size_; ++i) b[i] = std::exp(a[i]);
+    return out;
+}
+
+Tensor Tensor::log_t() const {
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < size_; ++i) b[i] = std::log(a[i] + 1e-12f);
+    return out;
+}
+
+Tensor Tensor::softmax(int dim) const {
+    if (ndim() != 2 || dim != 1)
+        throw std::runtime_error("softmax: only 2D tensors with dim=1 supported");
+    int m = shape_[0], n = shape_[1];
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* b = out.data_.get();
+    for (int i = 0; i < m; ++i) {
+        const float* row = a + i * n; float* orow = b + i * n;
+        float maxv = *std::max_element(row, row + n);
+        float sum = 0.f;
+        for (int j = 0; j < n; ++j) { orow[j] = std::exp(row[j] - maxv); sum += orow[j]; }
+        for (int j = 0; j < n; ++j) orow[j] /= sum;
+    }
+    return out;
+}
+
+Tensor Tensor::add_bias(const Tensor& bias) const {
+    if (ndim() != 2 || bias.ndim() != 1 || shape_[1] != bias.size_)
+        throw std::invalid_argument("add_bias: shape mismatch");
+    int m = shape_[0], n = shape_[1];
+    bool rg = requires_grad_ || bias.requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); const float* b = bias.data_.get(); float* c = out.data_.get();
+    for (int i = 0; i < m; ++i)
+        for (int j = 0; j < n; ++j)
+            c[i * n + j] = a[i * n + j] + b[j];
+    return out;
+}
+
+// ---------------------------------------------------------------------------
 // Shape manipulation: reshape, sum, mean (forward-only)
 // ---------------------------------------------------------------------------
 
