@@ -166,6 +166,52 @@ Tensor Tensor::detach() const {
 }
 
 // ---------------------------------------------------------------------------
+// Arithmetic operators (forward-only; autograd wired in a later commit)
+// ---------------------------------------------------------------------------
+
+Tensor Tensor::operator+(const Tensor& other) const {
+    if (shape_ != other.shape_)
+        throw std::invalid_argument("operator+ shape mismatch; use add_bias for broadcast");
+    bool rg = requires_grad_ || other.requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); const float* b = other.data_.get(); float* c = out.data_.get();
+    for (int i = 0; i < size_; ++i) c[i] = a[i] + b[i];
+    return out;
+}
+
+Tensor Tensor::operator-(const Tensor& other) const {
+    if (shape_ != other.shape_)
+        throw std::invalid_argument("operator- shape mismatch");
+    bool rg = requires_grad_ || other.requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); const float* b = other.data_.get(); float* c = out.data_.get();
+    for (int i = 0; i < size_; ++i) c[i] = a[i] - b[i];
+    return out;
+}
+
+Tensor Tensor::operator*(const Tensor& other) const {
+    if (shape_ != other.shape_)
+        throw std::invalid_argument("operator* shape mismatch");
+    bool rg = requires_grad_ || other.requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); const float* b = other.data_.get(); float* c = out.data_.get();
+    for (int i = 0; i < size_; ++i) c[i] = a[i] * b[i];
+    return out;
+}
+
+Tensor Tensor::operator*(float s) const {
+    bool rg = requires_grad_;
+    Tensor out = make_output(shape_, rg);
+    const float* a = data_.get(); float* c = out.data_.get();
+    for (int i = 0; i < size_; ++i) c[i] = a[i] * s;
+    return out;
+}
+
+Tensor operator*(float s, const Tensor& t) { return t * s; }
+
+Tensor Tensor::operator/(float s) const { return (*this) * (1.f / s); }
+
+// ---------------------------------------------------------------------------
 // In-place ops (optimizer use only — no graph nodes created)
 // ---------------------------------------------------------------------------
 
