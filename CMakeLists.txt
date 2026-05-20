@@ -46,3 +46,5 @@ if(ENABLE_MPI)
     target_link_libraries(cppdist PUBLIC MPI::MPI_CXX)
     target_include_directories(cppdist PUBLIC ${MPI_CXX_INCLUDE_DIRS})
 endif()
+
+add_subdirectory(examples/mlp_classify)
